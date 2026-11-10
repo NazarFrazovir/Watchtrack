@@ -1,0 +1,52 @@
+name: watchtrack
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-watchtrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-watchtrack}
+      POSTGRES_DB: ${POSTGRES_DB:-watchtrack}
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # дані переживають перезапуск і видалення контейнера
+    ports:
+      - "${DB_PORT:-5433}:5432"           # 5433 зовні, щоб не конфліктувати з локальним PostgreSQL
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - backend
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-watchtrack}:${POSTGRES_PASSWORD:-watchtrack}@db:5432/${POSTGRES_DB:-watchtrack}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      db:
+        condition: service_healthy        # API стартує лише коли БД готова приймати з'єднання
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - backend
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+    driver: bridge

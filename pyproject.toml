@@ -1,0 +1,17 @@
+[project]
+name = "watchtrack"
+version = "0.1.0"
+description = "WatchTrack — трекер фільмів і серіалів (курс «Інженерія високонавантажених систем»)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "A", "BLE", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # кирилиця в коментарях і рядках — це нормально
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "scripts"]
